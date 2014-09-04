@@ -1,0 +1,173 @@
+---
+title: "Aerial Survey Models for 2011 Shrimp data"
+author: "Kevin M. Purcell"
+date: "Monday, August 11, 2014"
+output: html_document
+---
+
+
+```{r envSetup}
+graphics.off()
+rm(list=ls(all=TRUE))
+
+library(dplyr)
+library(maptools)
+library(maps)
+library(mapdata)
+library(stargazer)
+
+```
+
+
+```{r dataInput}
+#dat <- read.csv("W://Craig//AerialSurvey//analysis//grid_AS_data_2011.csv")
+dat <- read.csv("W://Craig//AerialSurvey//analysis//AS_data_gridv3.csv")
+dist <- read.csv("W://Craig//AerialSurvey//analysis//distShorlineData_KC.csv")
+pnts <- read.csv("W://Craig//AerialSurvey//analysis//grid_v3.csv")
+
+names(dat)
+#str(dat)
+summary(dat)
+names(dist)
+
+summary(pnts)
+pnts <- subset(pnts, pnts$cent_y>=28.26&pnts$cent_y<=29.59)
+dat <- subset(dat, dat$cent_y>=28.26&dat$cent_y<=29.59)
+names(dat)
+names(pnts)
+
+```
+
+
+
+```{r dataMungin}
+agg_pnts <- dplyr::select(dat, centroidID, cent_x, cent_y)
+agg_pnts$count <- 1
+agg.dat <- aggregate(count ~ centroidID, data=agg_pnts, FUN=sum)
+agg.dat <- merge(agg_pnts, pnts, by=c("cent_x", "cent_y"), all.y=T)
+
+#agg.dat <- subset(agg.dat, agg.dat$y > 0)
+plot(agg.dat$cent_y ~ agg.dat$cent_x)
+map("state",fill=T,col="gray",add=T)
+
+summary(agg.dat)
+agg.dat[ is.na(agg.dat) ] <- 0 
+summary(agg.dat)
+
+
+dat <- merge(dat, dist, by=c("a_lat","a_lon","Identifyin"))
+agg_env <- dplyr::select(dat, centroidID, cent_x, cent_y, oxy, salt, temp, cdom, chloro, dist_shore)
+agg.env <- aggregate(cbind(oxy, salt, temp, cdom, chloro, dist_shore) ~ centroidID + cent_x + cent_y, data=agg_env, FUN=mean)
+
+
+gam.dat <- merge(agg.dat, agg.env, by=c("centroidID", "cent_x", "cent_y"), all.x=T)
+gam.dat <- dplyr::select(gam.dat, -centroidID, -id)
+summary(gam.dat)
+
+
+```
+
+```{r gamModel}
+library(mgcv)
+
+#gam.dat <- na.omit(gam.dat$oxy)
+
+mod.1<-gam(count ~ s(oxy) + s(dist_shore), family=binomial("logit"), data=gam.dat)
+
+gam.check(mod.1)
+
+summary(mod.1)
+plot.gam(mod.1)
+
+
+
+
+```
+
+No real effects using a general model of just the environmental factors.  However, a spatial model will not run due to limited data.  So I will strip down the model based on this initial run and attempt a spatial model. 
+
+
+```{r, results='asis'}
+
+mod.2<-gam(log(count) ~ s(x,y) + s(oxy)
+             , family=poisson, data=gam.dat)
+
+gam.check(mod.2)
+
+summary(mod.2)
+plot.gam(mod.2, select=1, resid=T)
+map("state",fill=T,col="gray",add=T)
+
+vis.gam(mod.2, view=c("x", "y"), 
+        plot.type="contour", type="response", contour="black",
+        color="topo",
+        main="", ylab="Latitude", xlab="Longitude")
+
+
+# add coastline
+map("worldHires", fill=T, col="grey",add=T)
+```
+
+The zero contour line transits the coast from the western bank of the Atchafalya to south east.  Next model looks at accounting for east or west within the model.
+
+
+```{r longMod}
+
+gam.dat$region <- 1
+gam.dat$region[gam.dat$x <= (-91.054)]=1
+gam.dat$region[gam.dat$x > (-91.054)]=2
+head(gam.dat)
+summary(gam.dat)
+str(gam.dat$region)
+gam.dat <- subset(gam.dat, gam.dat$dist_shore<125)
+
+mod.3<-gam(log(count) ~  s(oxy) + factor(region)
+             , family=poisson, data=gam.dat)
+
+gam.check(mod.3)
+
+summary(mod.3)
+plot.gam(mod.3, shade=T)
+plot.gam(mod.3, all.terms = T)
+```
+
+
+```{r eastMod}
+
+east.dat <- subset(gam.dat, gam.dat$region == 2)
+mod.4 <- gam(log(count) ~ s(oxy) + s(dist_shore), family=poisson, data=east.dat)
+gam.check(mod.4)
+plot.gam(mod.4, shade=T)
+
+summary(mod.4)
+
+west.dat <- subset(gam.dat, gam.dat$region == 1)
+
+mod.5 <- gam(log(count) ~ s(oxy) + s(dist_shore), family=poisson, data=west.dat)
+summary(mod.5)
+plot.gam(mod.5, shade=T)
+
+```
+
+
+```{r modComp }
+par(mfrow=c(1,2))
+vis.gam(mod.5, main="Western Louisiana", 
+        theta=35, phi=30,
+        ticktype="detailed",
+        zlab="Trawler Density",
+        ylab="Distance from Shore",
+        xlab="Oxygen",
+        cex=0.5)
+vis.gam(mod.4, main="Eastern Louisiana", 
+        theta=35, phi=30,
+        ticktype="detailed",
+        zlab="Trawler Density",
+        ylab="Distance from Shore",
+        xlab="Oxygen",
+        cex=0.5)
+
+
+```
+
+

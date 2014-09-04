@@ -1,0 +1,277 @@
+---
+title: "Aerial Survey Modeling Analysis"
+author: "Kevin M. Purcell"
+date: "Monday, July 28, 2014"
+output: html_document
+---
+```{r setup}
+graphics.off()
+rm(list=ls(all=TRUE))
+
+library(dplyr)
+
+```
+
+
+
+## Data Munging
+
+### Data Acquisition
+
+Data has undergone significant preprocessing using both linux programs and ArcMap v10.2 software in preparation for its use in this modeling procedure.  Full details based on hand written notes should go here..  Additionally, add in the text from the aerialSurvey.org files
+
+### Satellite preprocessing
+
+SeaDas software
+
+### Spatial Integration
+
+ArcMap...
+
+
+```{r dataImport}
+
+# Import sighting locations
+loc_2011<-read.csv(file = "W://Craig//AerialSurvey//GIS//AS_locations2011.csv",
+                     sep = ",",
+                     header = TRUE)
+#names(loc_2011)
+# Rename df columns
+colnames(loc_2011) <- c("Id", "date", "time", "a_lat", "a_lon")
+
+#create a new vector that is a composit of the location fields
+loc_2011$location<-(loc_2011$a_lon+loc_2011$a_lat)
+
+#remove duplicate values from the location vector
+loc_2011<-loc_2011[!duplicated(loc_2011[c("location")]),]
+
+
+site_dat<-read.csv(file = "W://Craig//AerialSurvey//GIS//AS_2011_data.csv",
+                     sep = ",",
+                     header = TRUE)
+names(site_dat)
+colnames(site_dat)[4:5]<-c("a_lat", "a_lon")
+site_dat$location<-(site_dat$a_lon+site_dat$a_lat)
+# Import the Satellite data sets
+#
+#
+# SALINITY
+sat_sst <-read.csv(file = "W://Craig//AerialSurvey//sst//2011//sampled_V2_2011.csv",
+                     sep = ",",
+                     header = TRUE)
+# Rename columns for clarity and merging, added prefix for post-merge
+colnames(sat_sst)[3:12] <- c("a_lon", "a_lat", "A2011175_sst", "A2011176_sst", "A2011177_sst", "A2011178_sst",
+                             "A2011179_sst", "A2011180_sst", "A2011181_sst", "A2011182_sst")
+# Keep only the position and data columns
+sat_sst <- dplyr::select(sat_sst, a_lon:A2011182_sst)
+
+#create a new vector that is a composit of the location fields
+sat_sst$location<-(sat_sst$a_lon+sat_sst$a_lat)
+
+#remove duplicate values from the location vector
+sat_sst<-sat_sst[!duplicated(sat_sst[c("location")]),]
+
+
+# TURBIDITY
+sat_turb<-read.csv(file = "W://Craig//AerialSurvey//analysis//sampled_2011_kd490.csv",
+                     sep = ",",
+                     header = TRUE)
+#names(sat_turb)
+colnames(sat_turb)[3:12] <- c("a_lon", "a_lat", "A2011175_turb", "A2011176_turb", "A2011177_turb", "A2011178_turb",
+                             "A2011179_turb", "A2011180_turb", "A2011181_turb", "A2011182_turb")
+# Keep only the position and data columns
+sat_turb <- dplyr::select(sat_turb, a_lon:A2011182_turb)
+
+#create a new vector that is a composit of the location fields
+sat_turb$location<-(sat_turb$a_lon+sat_turb$a_lat)
+
+#remove duplicate values from the location vector
+sat_turb<-sat_turb[!duplicated(sat_turb[c("location")]),]
+
+
+
+sat_chloro<-read.csv(file = "W://Craig//AerialSurvey//analysis//sampled_2011_chloro.csv",
+                     sep = ",",
+                     header = TRUE)
+#names(sat_chloro)
+colnames(sat_chloro)[3:4] <- c("a_lon", "a_lat")
+# Keep only the position and data columns
+sat_chloro <- dplyr::select(sat_chloro, a_lon:A2011182_chloro)
+
+#create a new vector that is a composit of the location fields
+sat_chloro$location<-(sat_chloro$a_lon+sat_chloro$a_lat)
+
+#remove duplicate values from the location vector
+sat_chloro<-sat_chloro[!duplicated(sat_chloro[c("location")]),]
+
+
+# Import the TowFish data from S. DiMarco
+#
+#
+tf_temp<-read.csv(file = "W://Craig//AerialSurvey//analysis//TFtemp_join.csv",
+                     sep = ",",
+                     header = TRUE)
+#names(tf_temp)
+#head(tf_temp)
+tf_temp <- dplyr::select(tf_temp, a_Latitude, a_Longitud, Field5, Distance)
+# rename columns
+colnames(tf_temp)[1:4] <- c("a_lat", "a_lon", "temp", "dist2temp")
+
+#create a new vector that is a composit of the location fields
+tf_temp$location<-(tf_temp$a_lon+tf_temp$a_lat)
+
+#remove duplicate values from the location vector
+tf_temp<-tf_temp[!duplicated(tf_temp[c("location")]),]
+
+
+tf_salt<-read.csv(file = "W://Craig//AerialSurvey//analysis//TFsalt_join.csv",
+                     sep = ",",
+                     header = TRUE)
+
+#names(tf_salt)
+#head(tf_salt)
+tf_salt <- dplyr::select(tf_salt, a_Latitude, a_Longitud, Field5, Distance)
+# rename columns
+colnames(tf_salt)[1:4] <- c("a_lat", "a_lon", "salt", "dist2salt")
+
+#create a new vector that is a composit of the location fields
+tf_salt$location<-(tf_salt$a_lon+tf_salt$a_lat)
+
+#remove duplicate values from the location vector
+tf_salt<-tf_salt[!duplicated(tf_salt[c("location")]),]
+
+
+tf_oxy <-read.csv(file = "W://Craig//AerialSurvey//analysis//TFoxy_join.csv",
+                     sep = ",",
+                     header = TRUE)
+#names(tf_oxy)
+#head(tf_oxy)
+tf_oxy <- dplyr::select(tf_oxy, a_Latitude, a_Longitud, Field6, Distance)
+# rename columns
+colnames(tf_oxy)[1:4] <- c("a_lat", "a_lon", "oxy", "dist2oxy")
+
+#create a new vector that is a composit of the location fields
+tf_oxy$location<-(tf_oxy$a_lon+tf_oxy$a_lat)
+
+#remove duplicate values from the location vector
+tf_oxy<-tf_oxy[!duplicated(tf_oxy[c("location")]),]
+
+
+tf_chloro<-read.csv(file = "W://Craig//AerialSurvey//analysis//TFchloro_join.csv",
+                     sep = ",",
+                     header = TRUE)
+#names(tf_chloro)
+#head(tf_chloro)
+tf_chloro <- dplyr::select(tf_chloro, a_Latitude, a_Longitud, Field6, Distance)
+# rename columns
+colnames(tf_chloro)[1:4] <- c("a_lat", "a_lon", "chloro", "dist2chloro")
+
+#create a new vector that is a composit of the location fields
+tf_chloro$location<-(tf_chloro$a_lon+tf_chloro$a_lat)
+
+#remove duplicate values from the location vector
+tf_chloro<-tf_chloro[!duplicated(tf_chloro[c("location")]),]
+
+
+tf_cdom<-read.csv(file = "W://Craig//AerialSurvey//analysis//TFcdom_join.csv",
+                     sep = ",",
+                     header = TRUE)
+
+#names(tf_cdom)
+#head(tf_cdom)
+tf_cdom <- dplyr::select(tf_cdom, a_Latitude, a_Longitud, Field6, Distance)
+# rename columns
+colnames(tf_cdom)[1:4] <- c("a_lat", "a_lon", "cdom", "dist2cdom")
+
+#create a new vector that is a composit of the location fields
+tf_cdom$location<-(tf_cdom$a_lon+tf_cdom$a_lat)
+
+#remove duplicate values from the location vector
+tf_cdom<-tf_cdom[!duplicated(tf_cdom[c("location")]),]
+
+
+```
+
+
+### Data Merging
+
+```{r mergeData, echo=FALSE}
+# gonna use the dplyr::inner_join() function
+as_data <-merge(loc_2011, tf_cdom, by= c("a_lat", "a_lon", "location"))
+as_data1<-merge(as_data, tf_chloro, by= c("a_lat", "a_lon", "location"))
+as_data2<-merge(as_data1, tf_oxy, by= c("a_lat", "a_lon", "location"))
+as_data3<-merge(as_data2, tf_salt, by= c("a_lat", "a_lon", "location"))
+as_data4<-merge(as_data3, tf_temp, by= c("a_lat", "a_lon", "location"))
+as_data5<-merge(as_data4, sat_chloro, by= c("a_lat", "a_lon", "location"))
+as_data6<-merge(as_data5, sat_sst, by= c("a_lat", "a_lon", "location"))
+as_data7<-merge(as_data6, sat_turb, by= c("a_lat", "a_lon", "location"))
+names(as_data7)
+env_dat<-as_data7
+
+env_dat$a_lat<-round(env_dat$a_lat, digits=3)
+env_dat$a_lon<-round(env_dat$a_lon, digits=3)
+
+site_dat$a_lat<-round(site_dat$a_lat, digits=3)
+site_dat$a_lon<-round(site_dat$a_lon, digits=3)
+
+#attach environmental data to observation data
+as_dat<-merge(site_dat, env_dat, by=c("a_lat","a_lon"), all.x=T, all.y=F)
+
+str(as_dat)
+
+#clean up workspace
+#rm(as_data,as_data1,as_data2,as_data3,as_data4,as_data5,as_data6,as_data7)
+```
+
+
+We merged several data sets to match the spatial location of visual sightings during the 2011 aerial survey
+
+
+Questions:
+1. Why are some rows in the original data using the same Id number (i.e. 42,71,...)
+
+
+
+## Exploratory Data Analysis
+If we start with using just the synoptic data from the tow fish
+
+```{r}
+# create a data set 
+shrimp_dat <- filter(as_dat, Vessel_Sighting_type == "Shrimp Trawler")
+
+
+write.csv(shrimp_dat, "W://Craig//AerialSurvey//analysis//shrimp_dat.csv")
+
+library(maptools)
+library(maps)
+library(mapdata)
+
+
+plot(shrimp_dat$a_lat ~ shrimp_dat$a_lon)
+map("state",fill=T,col="gray",add=T)
+
+# Playing with some counts 1 degree is not enough resolution with this little data 
+data.df<-shrimp_dat
+data.df$X <- floor(data.df$a_lon)
+data.df$Y <- floor(data.df$a_lat)
+data.df$Cell <- data.df$X + 360 * data.df$Y
+
+counts <- by(data.df, data.df$Cell, function(d) c(d$X[1], d$Y[1], nrow(d)))
+counts.m <- matrix(unlist(counts), nrow=3)
+rownames(counts.m) <- c("X", "Y", "Count")
+#write.csv(as.data.frame(t(counts.m)), "W://Craig//AerialSurvey//analysis//shrimp_agg.csv")
+
+count.max <- max(counts.m["Count",])
+colors = sapply(counts.m["Count",], function(n) hsv(sqrt(n/count.max), .7, .7, .5))
+plot(counts.m["X",] + 1/2, counts.m["Y",] + 1/2, cex=sqrt(counts.m["Count",]/100),
+     pch = 19, col=colors,
+     xlab="Longitude of cell center", ylab="Latitude of cell center",
+     main="Event counts within one-degree grid cells")
+#decide to get rid of data > than a given distance from data points
+
+```
+
+
+
+
+
