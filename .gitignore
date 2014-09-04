@@ -1,5 +1,30 @@
+# Directories to ignore
+chloro/
+depth/
+Kd490/
+mapImages/
+sst/
+
 # History files
 .Rhistory
 
 # Example code in package build process
 *-Ex.R
+
+
+# imagery files
+.tif
+.jpeg
+.jpg
+
+# GIS Files
+.lyr
+.xml
+.ovr
+.tfw
+.prj
+.shp
+.shx
+.sbn
+.sbx
+.adf
