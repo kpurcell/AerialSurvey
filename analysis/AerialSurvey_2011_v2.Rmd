@@ -173,7 +173,7 @@ vis.gam(mod.4, main="Eastern Louisiana",
 
 ## Kernal Density Plot
 
-I am considering using a different analysis approach for the aerial survey data due to the loss of sample size when scaling the points up to bins.  Today I am going to try to create kernal density plots based on a [blog post](http://www.samuelbosch.com/2014/02/creating-kernel-density-estimate-map-in.html) by [Samuel Bosch](http://www.samuelbosch.com) or [@gissolved](https://twitter.com/gissolved) on twitter.  
+I am considering using a different analysis approach for the aerial survey data due to the loss of sample size when scaling the points up to a grid. Today I am going to try to create kernal density plots based on a [blog post](http://www.samuelbosch.com/2014/02/creating-kernel-density-estimate-map-in.html) by [Samuel Bosch](http://www.samuelbosch.com) or [@gissolved](https://twitter.com/gissolved) on twitter.  
 
 ```{r kernalDensity, echo=TRUE, warning=FALSE, message=FALSE}
 
